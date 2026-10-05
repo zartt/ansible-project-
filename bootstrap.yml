@@ -1,0 +1,63 @@
+---
+- name: Первичная настройка Linux-серверов
+  hosts: all
+  gather_facts: true
+
+  tasks:
+    - name: Обновление списка пакетов
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Установка базовых пакетов
+      ansible.builtin.apt:
+        name:
+          - curl
+          - wget
+          - vim
+          - htop
+          - git
+          - ca-certificates
+        state: present
+
+    - name: Создание пользователя deploy
+      ansible.builtin.user:
+        name: deploy
+        shell: /bin/bash
+        create_home: true
+        state: present
+
+    - name: Установка sudo
+      ansible.builtin.apt:
+        name: sudo
+        state: present
+
+    - name: Добавление deploy в группу sudo
+      ansible.builtin.user:
+        name: deploy
+        groups: sudo
+        append: true
+
+    - name: Создание каталога sudoers.d
+      ansible.builtin.file:
+        path: /etc/sudoers.d
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Разрешение sudo без пароля
+      ansible.builtin.copy:
+        dest: /etc/sudoers.d/deploy
+        content: "deploy ALL=(ALL) NOPASSWD: ALL\n"
+        owner: root
+        group: root
+        mode: '0440'
+
+    - name: Вывод информации о сервере
+      ansible.builtin.debug:
+        msg:
+          - "Сервер: {{ inventory_hostname }}"
+          - "IP: {{ ansible_host | default('не указан') }}"
+          - "ОС: {{ ansible_distribution }} {{ ansible_distribution_version }}"
+          - "Python: {{ ansible_python_version }}"
